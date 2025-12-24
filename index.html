@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Brick Breaker & Leaderboard</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap');
+
+        :root {
+            --bg-color: #1a1a2e;
+            --container-bg: #16213e;
+            --accent-color: #0f3460;
+            --highlight: #e94560;
+            --text-color: #ffffff;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        h1 {
+            margin-top: 20px;
+            text-shadow: 0 0 10px var(--highlight);
+        }
+
+        /* Login Screen */
+        #login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            backdrop-filter: blur(5px);
+        }
+
+        .login-box {
+            background: var(--container-bg);
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 0 20px rgba(233, 69, 96, 0.4);
+            border: 1px solid var(--highlight);
+        }
+
+        input {
+            padding: 12px;
+            border-radius: 5px;
+            border: none;
+            width: 200px;
+            margin-bottom: 20px;
+            font-size: 16px;
+            background: #0f3460;
+            color: white;
+            outline: none;
+        }
+
+        button {
+            padding: 12px 30px;
+            border-radius: 25px;
+            border: none;
+            background: var(--highlight);
+            color: white;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px var(--highlight);
+        }
+
+        /* Game Layout */
+        .main-container {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+            opacity: 0.1; /* Initially dimmed until login */
+            transition: opacity 0.5s;
+        }
+
+        .game-area {
+            position: relative;
+        }
+
+        canvas {
+            background: #000;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            border: 2px solid #333;
+        }
+
+        /* Leaderboard */
+        .leaderboard-container {
+            background: var(--container-bg);
+            padding: 20px;
+            border-radius: 10px;
+            width: 300px;
+            height: 480px;
+            overflow-y: auto;
+            border: 1px solid #333;
+        }
+
+        .leaderboard-container h2 {
+            text-align: center;
+            border-bottom: 2px solid var(--highlight);
+            padding-bottom: 10px;
+            margin-top: 0;
+            color: var(--highlight);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #333;
+        }
+
+        th {
+            color: #aaa;
+        }
+
+        .rank-1 { color: gold; font-weight: bold; }
+        .rank-2 { color: silver; font-weight: bold; }
+        .rank-3 { color: #cd7f32; font-weight: bold; }
+
+        /* Game UI */
+        #score-display {
+            font-size: 20px;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        #game-over-modal {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            border: 2px solid var(--highlight);
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- Login Screen -->
+    <div id="login-overlay">
+        <div class="login-box">
+            <h2 style="color: var(--highlight);">BLOCK BREAKER</h2>
+            <p>Enter your name to play</p>
+            <input type="text" id="username" placeholder="Nickname" maxlength="10">
+            <br>
+            <button id="start-btn">GAME START</button>
+        </div>
+    </div>
+
+    <h1>NEON BRICK BREAKER</h1>
+
+    <div class="main-container" id="main-interface">
+        <!-- Game Section -->
+        <div class="game-area">
+            <div id="score-display">Score: 0</div>
+            <canvas id="gameCanvas" width="480" height="400"></canvas>
+            
+            <!-- Game Over / Win Modal -->
+            <div id="game-over-modal">
+                <h2 id="end-title">GAME OVER</h2>
+                <p>Final Score: <span id="final-score">0</span></p>
+                <button id="restart-btn">Try Again</button>
+            </div>
+        </div>
+
+        <!-- Leaderboard Section -->
+        <div class="leaderboard-container">
+            <h2>🏆 TOP 10 RANK</h2>
+            <table id="leaderboard-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Name</th>
+                        <th>Score</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboard-body">
+                    <tr><td colspan="3" style="text-align:center;">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Firebase SDK & Game Logic -->
+    <script type="module">
+        // --------------------------------------------------------
+        // 1. Firebase Configuration & Setup
+        // --------------------------------------------------------
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { getDatabase, ref, push, onValue, query, orderByChild, limitToLast } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+
+        // *** 여기에 본인의 Firebase 설정값을 입력하세요 ***
+        const firebaseConfig = {
+             apiKey: "AIzaSyA8b0a8NO3LZ5BFTMShwQ98GpnMkDTqRNs",
+  authDomain: "bbgame-1b934.firebaseapp.com",
+  databaseURL: "https://bbgame-1b934-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "bbgame-1b934",
+  storageBucket: "bbgame-1b934.firebasestorage.app",
+  messagingSenderId: "634341840876",
+  appId: "1:634341840876:web:bb9b73870056fdf1bf92c9": "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            databaseURL: "YOUR_DATABASE_URL",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        let app, db;
+        let isFirebaseReady = false;
+
+        try {
+            app = initializeApp(firebaseConfig);
+            db = getDatabase(app);
+            isFirebaseReady = true;
+            listenToLeaderboard();
+        } catch (e) {
+            console.error("Firebase Init Error: 설정값을 확인해주세요.", e);
+            document.querySelector('#leaderboard-body').innerHTML = "<tr><td colspan='3'>DB Error</td></tr>";
+        }
+
+        // --------------------------------------------------------
+        // 2. Game Variables & Init
+        // --------------------------------------------------------
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        
+        // Game State
+        let gameRunning = false;
+        let score = 0;
+        let userName = "";
+        let animationId;
+
+        // Ball props
+        const ballRadius = 6;
+        let x, y, dx, dy;
+
+        // Paddle props
+        const paddleHeight = 10;
+        const paddleWidth = 75;
+        let paddleX;
+
+        // Brick props
+        const brickRowCount = 5;
+        const brickColumnCount = 6;
+        const brickPadding = 10;
+        const brickOffsetTop = 30;
+        const brickOffsetLeft = 35;
+        const brickWidth = (canvas.width - (brickOffsetLeft * 2) - (brickPadding * (brickColumnCount - 1))) / brickColumnCount;
+        const brickHeight = 20;
+
+        let bricks = [];
+
+        // Controls
+        let rightPressed = false;
+        let leftPressed = false;
+
+        // Colors
+        const colors = ["#e94560", "#0f3460", "#533483", "#16213e", "#e94560"];
+
+        // --------------------------------------------------------
+        // 3. Game Logic Functions
+        // --------------------------------------------------------
+
+        function initGame() {
+            x = canvas.width / 2;
+            y = canvas.height - 30;
+            dx = 3;
+            dy = -3;
+            paddleX = (canvas.width - paddleWidth) / 2;
+            score = 0;
+            document.getElementById("score-display").innerText = `Score: ${score}`;
+            
+            // Init Bricks
+            bricks = [];
+            for (let c = 0; c < brickColumnCount; c++) {
+                bricks[c] = [];
+                for (let r = 0; r < brickRowCount; r++) {
+                    bricks[c][r] = { x: 0, y: 0, status: 1, color: colors[r % colors.length] };
+                }
+            }
+            
+            document.getElementById("game-over-modal").style.display = "none";
+            gameRunning = true;
+            draw();
+        }
+
+        function keyDownHandler(e) {
+            if (e.key == "Right" || e.key == "ArrowRight") {
+                rightPressed = true;
+            } else if (e.key == "Left" || e.key == "ArrowLeft") {
+                leftPressed = true;
+            }
+        }
+
+        function keyUpHandler(e) {
+            if (e.key == "Right" || e.key == "ArrowRight") {
+                rightPressed = false;
+            } else if (e.key == "Left" || e.key == "ArrowLeft") {
+                leftPressed = false;
+            }
+        }
+
+        function collisionDetection() {
+            for (let c = 0; c < brickColumnCount; c++) {
+                for (let r = 0; r < brickRowCount; r++) {
+                    let b = bricks[c][r];
+                    if (b.status == 1) {
+                        if (x > b.x && x < b.x + brickWidth && y > b.y && y < b.y + brickHeight) {
+                            dy = -dy;
+                            b.status = 0;
+                            score++;
+                            document.getElementById("score-display").innerText = `Score: ${score}`;
+                            
+                            // Win Condition
+                            if (score == brickRowCount * brickColumnCount) {
+                                endGame(true);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        function drawBall() {
+            ctx.beginPath();
+            ctx.arc(x, y, ballRadius, 0, Math.PI * 2);
+            ctx.fillStyle = "#fff";
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = "#fff";
+            ctx.fill();
+            ctx.closePath();
+            ctx.shadowBlur = 0;
+        }
+
+        function drawPaddle() {
+            ctx.beginPath();
+            ctx.rect(paddleX, canvas.height - paddleHeight, paddleWidth, paddleHeight);
+            ctx.fillStyle = "#e94560";
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = "#e94560";
+            ctx.fill();
+            ctx.closePath();
+            ctx.shadowBlur = 0;
+        }
+
+        function drawBricks() {
+            for (let c = 0; c < brickColumnCount; c++) {
+                for (let r = 0; r < brickRowCount; r++) {
+                    if (bricks[c][r].status == 1) {
+                        let brickX = (c * (brickWidth + brickPadding)) + brickOffsetLeft;
+                        let brickY = (r * (brickHeight + brickPadding)) + brickOffsetTop;
+                        bricks[c][r].x = brickX;
+                        bricks[c][r].y = brickY;
+                        ctx.beginPath();
+                        ctx.rect(brickX, brickY, brickWidth, brickHeight);
+                        ctx.fillStyle = bricks[c][r].color;
+                        ctx.fill();
+                        ctx.closePath();
+                    }
+                }
+            }
+        }
+
+        function draw() {
+            if (!gameRunning) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawBricks();
+            drawBall();
+            drawPaddle();
+            collisionDetection();
+
+            // Wall Collision
+            if (x + dx > canvas.width - ballRadius || x + dx < ballRadius) {
+                dx = -dx;
+            }
+            if (y + dy < ballRadius) {
+                dy = -dy;
+            } else if (y + dy > canvas.height - ballRadius) {
+                if (x > paddleX && x < paddleX + paddleWidth) {
+                    // Paddle Hit - Add some angle variation based on hit position
+                    let hitPoint = x - (paddleX + paddleWidth / 2);
+                    dx = hitPoint * 0.15; 
+                    dy = -dy;
+                    // Speed up slightly
+                    dy = dy > 0 ? dy + 0.2 : dy - 0.2; 
+                } else {
+                    // Game Over
+                    endGame(false);
+                    return; 
+                }
+            }
+
+            // Paddle Movement
+            if (rightPressed && paddleX < canvas.width - paddleWidth) {
+                paddleX += 7;
+            } else if (leftPressed && paddleX > 0) {
+                paddleX -= 7;
+            }
+
+            x += dx;
+            y += dy;
+
+            animationId = requestAnimationFrame(draw);
+        }
+
+        function endGame(isWin) {
+            gameRunning = false;
+            cancelAnimationFrame(animationId);
+            
+            const title = isWin ? "YOU WIN! 🎉" : "GAME OVER 💀";
+            document.getElementById("end-title").innerText = title;
+            document.getElementById("end-title").style.color = isWin ? "gold" : "#e94560";
+            document.getElementById("final-score").innerText = score;
+            document.getElementById("game-over-modal").style.display = "block";
+
+            saveScore(userName, score);
+        }
+
+        // --------------------------------------------------------
+        // 4. Firebase Logic (DB)
+        // --------------------------------------------------------
+
+        function saveScore(name, score) {
+            if (!isFirebaseReady) return;
+            const scoresRef = ref(db, 'scores');
+            push(scoresRef, {
+                username: name,
+                score: score,
+                timestamp: Date.now()
+            });
+        }
+
+        function listenToLeaderboard() {
+            const scoresRef = ref(db, 'scores');
+            // Top 10 query (Firebase sorts ascending, so we take last 10)
+            const topScoresQuery = query(scoresRef, orderByChild('score'), limitToLast(10));
+
+            onValue(topScoresQuery, (snapshot) => {
+                const data = snapshot.val();
+                const tbody = document.getElementById("leaderboard-body");
+                tbody.innerHTML = "";
+
+                if (!data) {
+                    tbody.innerHTML = "<tr><td colspan='3' style='text-align:center'>No scores yet</td></tr>";
+                    return;
+                }
+
+                // Convert object to array
+                let scoresArray = [];
+                for (let id in data) {
+                    scoresArray.push(data[id]);
+                }
+
+                // Sort descending (High score first)
+                scoresArray.sort((a, b) => b.score - a.score);
+
+                // Render
+                scoresArray.forEach((entry, index) => {
+                    const row = document.createElement("tr");
+                    let rankClass = "";
+                    if (index === 0) rankClass = "rank-1";
+                    if (index === 1) rankClass = "rank-2";
+                    if (index === 2) rankClass = "rank-3";
+
+                    row.innerHTML = `
+                        <td class="${rankClass}">${index + 1}</td>
+                        <td class="${rankClass}">${escapeHtml(entry.username)}</td>
+                        <td class="${rankClass}">${entry.score}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            });
+        }
+
+        // Helper to prevent XSS
+        function escapeHtml(text) {
+            if(!text) return "";
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // --------------------------------------------------------
+        // 5. Event Listeners & UI Handlers
+        // --------------------------------------------------------
+        
+        document.addEventListener("keydown", keyDownHandler, false);
+        document.addEventListener("keyup", keyUpHandler, false);
+
+        document.getElementById("start-btn").addEventListener("click", () => {
+            const inputName = document.getElementById("username").value.trim();
+            if (inputName) {
+                userName = inputName;
+                document.getElementById("login-overlay").style.display = "none";
+                document.getElementById("main-interface").style.opacity = "1";
+                initGame();
+            } else {
+                alert("Please enter a name!");
+            }
+        });
+
+        document.getElementById("restart-btn").addEventListener("click", () => {
+            initGame();
+        });
+
+    </script>
+</body>
+</html>
